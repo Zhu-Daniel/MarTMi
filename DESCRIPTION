@@ -1,0 +1,18 @@
+Package: MarTMi
+Type: Package
+Title: Convert R Markdown/Markdown files to Mindmap files and vise versa
+Version: 0.1.0
+Author: Daniel Zhu
+Maintainer: Daniel Zhu <zhudaniel322@gmail.com>
+Description: Provides two functions. One will convert a Markdown file to a Mindmap file,
+    based on the number of pound signs before each codeblock, and inserts in the codeblock
+    as notes and any input and output as extra nodes. The other function will convert Mindmap files
+    into Markdown files, following the same pattern as the first function.
+License: What license is it under?
+Encoding: UTF-8
+LazyData: FALSE
+Imports: 
+    yaml,stringr,htmltools,XML
+Suggests:
+    ProjectTemplate
+RoxygenNote: 6.0.1

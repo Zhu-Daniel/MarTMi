@@ -1,0 +1,618 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r setup, include=F, results='hide', message=FALSE, warning=FALSE}
+knitr::opts_knit$set(root.dir = normalizePath("..")) 
+
+source("~/Rstat/my.util.r")
+comm.libs <- c("plyr","tidyverse", "stringr", "ggplot2", "reshape2", "cowplot", "openxlsx")
+lapply(comm.libs, require, character.only = TRUE)
+
+set.seed(17)
+default.par <- par(no.readonly = TRUE)
+options(stringsAsFactors = FALSE)
+
+
+#ggplot theme set
+theme_set(theme_bw())
+fontsize = 12L
+theme_update(axis.title.x = element_text(size=fontsize))
+theme_update(axis.title.y = element_text(size=fontsize))
+theme_update(plot.title = element_text(size=fontsize+2))
+
+```
+
+# Load RSEM stat data
+```{r}
+source("lib/RSEM_misc.R")
+inova.stat <- get_RSEM_stat("~/107/rsem2", main="Inova 150 samples") %>% rownames_to_column("ID") %>% mutate(Source="Inova", Read_Length=51, Paired="Yes")
+
+utah.stat  <- get_RSEM_stat("~/107/utah/rsem/", main="Utah samples") %>% rownames_to_column("ID") %>% mutate(Source="Utah", Read_Length=50, Paired="No")
+
+# output the total reads and the N1, number of aligner reads
+# and align with the selected samples
+load("cache/fc.final.RData")
+
+sam <- fc.final$targets
+
+.d <- inova.stat %>% bind_rows(utah.stat)
+rnaseq.stat <- .d %>% filter(ID %in% sam$ID)
+ProjectTemplate::cache("rnaseq.stat")
+
+# data to be outputed
+load("cache/sam_update.RData")
+rnaseq.stat.tab <- sam_update %>% select(id, sid) %>% rename(ID=id, SID=sid) %>% left_join(rnaseq.stat) %>% mutate(Total=Ntot, Alignable=N1, Perc=Alignable/Total) %>% select(ID, SID, Source, Read_Length, Paired, Alignable, Total, Perc)
+
+ggplot(rnaseq.stat.tab, aes(Source, y=Perc)) + geom_boxplot()
+
+ggplot(rnaseq.stat.tab, aes(Source, y=Alignable)) + geom_boxplot()
+
+
+
+rnaseq.summary <- rnaseq.stat.tab %>% group_by(Source) %>% summarise(N= n(), TotalReads=sum(Total), MeanReads=mean(Total), MeanPerc=mean(Perc))
+
+rnaseq.summary
+
+write.xlsx(list(stat=rnaseq.stat.tab, summary=rnaseq.summary), file="reports/rnaseq.stat_tab.xlsx")
+```
+
+# expressed genes (dge.expr)
+## Mean of log2 RPKM score is above 0 N=12,428
+
+
+    isexpr <- rowSums(all.dge$counts>1) > ncol(all.dge) * 0.25
+    sum(isexpr)
+    hist(rowMeans(RPKM), n=100)
+    isExpr <- rowMeans(RPKM) > 0
+    sum(isExpr, na.rm=T)
+    
+    ind <- !is.na(isExpr) & isExpr
+    .ids <- dge.final$genes[ind, ] %>% filter(!is.na(gene.name)) %>% filter(!duplicated(gene.name)) %>% .$id
+
+
+```{r}
+exp.genes <- fc.final$genes
+dim(exp.genes)
+
+
+gene_type.summary <- exp.genes %>% group_by(gene_type) %>% summarise(N=n()) %>% mutate(Perc=N/sum(N))
+options(scipen=1, digits=3)
+gene_type.summary
+
+write.xlsx(gene_type.summary, "reports/gene_type.sumamry.xlsx")
+ggplot(gene_type.summary, aes(gene_type, y=N)) + geom_col() 
+
+```
+
+## check antisense lncRNA
+```{r}
+anti.ss <- exp.genes$gene_type == "antisense"
+
+load("cache/dge.expr.RData")
+.d <- dge.expr[anti.ss, sam$ID]
+
+inova.anti <- .d$counts[, sam$source == "Inova"] %>% rowMeans()
+utah.anti <- .d$counts[, sam$source == "Utah"] %>% rowMeans()
+plot(inova.anti, utah.anti)
+
+names(utah.anti)[utah.anti>30000]
+
+exp.genes %>% filter(gene.name == "RPPH1")
+
+no.outlier <- utah.anti < 30000
+plot(inova.anti[no.outlier], utah.anti[no.outlier])
+abline(a=0, b=1, lty=2)
+```
+## Check top highly expressed genes in utah and inova
+```{r}
+inova.top <- dge.expr$counts[, sam$source == "Inova"] %>% rowMeans() %>% sort(decreasing = T) %>% head(n=100)
+utah.top <-  dge.expr$counts[, sam$source == "Utah"] %>% rowMeans() %>% sort(decreasing = T) %>% head(n=100)
+compare(names(inova.top), names(utah.top))
+
+all.top <- dge.expr$counts %>% rowMeans() %>% sort(decreasing = T)
+all.top.perc <- cumsum(all.top)/sum(all.top)
+plot(all.top.perc, type="p", xlim=c(1,200))
+abline(h=0.5, lty=2)
+head(all.top.perc, n=50)
+plot(all.top.perc, type="p")
+
+top100.expr.dat <- data.frame(gene.name=names(all.top), Avg_Count=all.top, CumPerc=all.top.perc) %>% `[`(1:100,) %>% left_join(exp.genes)
+
+write.xlsx(top100.expr.dat, "reports/top100_expressed.xlsx")
+
+## top 36 genes account for 50% gene expression (to AHNAK)
+top100.expr.dat$Gene
+top100.expr.dat %>% `[`(1:36,) %>% .$gene_type %>% table
+```
+
+# update the master table
+```{r}
+.d <- read.xlsx("data/Master Clinical Data June 2018_update.xlsx") %>% janitor::clean_names()
+sam_update <- .d
+ProjectTemplate::cache("sam_update")
+```
+
+```{r}
+library(tableone)
+
+vars <- names(sam_update)[7:52]
+
+# remove the controls
+dat <- sam_update %>% filter(sample == "HF")
+
+table1 <- CreateTableOne(vars = c(vars), strata = "source", data = dat, test = T)
+## Show table with SMD
+print(table1, smd = F)
+
+tab1Mat <- print(table1, smd=F, quote = FALSE, noSpaces = TRUE, printToggle = FALSE)
+## Save to a CSV file
+write.csv(tab1Mat, file = "reports/Table1_update.csv")
+ProjectTemplate::cache("table1")
+
+```
+
+
+
+# DEGs
+## redefine dge
+## create inova_n20.dge and utah_n20.dge
+```{r}
+load("cache/dge.expr.RData")
+inova.ids <- sam_update %>% filter(source == "Inova") %>% .$id
+utah.ids <- sam_update %>% filter(source == "Utah") %>% .$id
+
+# update samples
+.t <- dge.expr$samples %>% select(group:ID,HG) %>% left_join(sam_update, by=c("ID"="id"))
+dge.expr$samples <- .t
+
+dge.expr <- calcNormFactors(dge.expr)
+ProjectTemplate::cache("dge.expr")
+
+inova_n31.dge <- dge.expr[, inova.ids]
+utah_n31.dge <- dge.expr[, utah.ids]
+ProjectTemplate::cache("inova_n31.dge")
+ProjectTemplate::cache("utah_n31.dge")
+
+dim(inova_n31.dge)
+dim(utah_n31.dge)
+```
+
+## review the DEGs with removing the outlier
+```{r}
+callDEG_n20 <- function(.dge) {
+  .sam <- .dge$samples
+
+  ## Perform TMM normalisation
+  .dge <- calcNormFactors(.dge)
+
+  # Start of common procedure
+  Type <- factor(.sam$chf_etiology)
+  Gender <- factor(.sam$gender_impute)
+  HG <- .sam$HG
+
+  .design <- model.matrix(~ Type + Gender + HG)
+
+  colnames(.design) <- sub("^Type", "", colnames(.design))
+  colnames(.design)[1] <- "Intercept"
+
+  .v <- voom(.dge, .design, plot = TRUE)
+
+  # skip to remove .isExpr
+  .isExpr <- rowMeans(.v$E) > 0
+  sum(!.isExpr)
+
+  .vfit <- lmFit(.v)
+
+  contrast.matrix <- makeContrasts(
+    ICM,
+    NICM,
+    ICM_NICM = NICM - ICM,
+    HF = (NICM + ICM)/2,
+    HG,
+    GenderMale,
+    levels=.design)
+
+  .vfit2 <- contrasts.fit(.vfit, contrast.matrix)
+  .vfit2 <- eBayes(.vfit2)
+  return(list(v=.v, fit=.vfit2))
+}
+
+# load("cache/inova_n20.dge.RData")
+.sss <- inova_n31.dge$samples$sid != "10537"
+inova_n31.fit <- callDEG_n20(inova_n31.dge[,.sss])
+utah_n31.fit <- callDEG_n20(utah_n31.dge)
+# inova_n20_noHG.fit <- callDEG_n20_noHG(inova_n20.dge)
+
+# with outlier
+inova_n31_wi.fit <- callDEG_n20(inova_n31.dge)
+
+ProjectTemplate::cache("inova_n31.fit")
+ProjectTemplate::cache("utah_n31.fit")
+ProjectTemplate::cache("inova_n31_wi.fit")
+```
+
+
+
+```{r}
+
+.def_degs <- function(.fit, coefs=c("HF", "ICM", "NICM", "ICM_NICM"), p.value = 0.05, lfc=1){
+  degs <- llply(coefs, function(x){
+    topTable(.fit, coef=x, sort.by="P", lfc=0, p.value = 1, number=Inf, adjust.method = "fdr") %>% mutate(DEG = adj.P.Val < p.value & abs(logFC)>lfc ) %>% filter(DEG) %>% arrange(-logFC)
+  })
+  names(degs) <- coefs
+  return(degs)
+}
+
+# from fit64
+inova.degs <- .def_degs(inova_n31.fit$fit)
+utah.degs <- .def_degs(utah_n31.fit$fit)
+inova_wi.degs <- .def_degs(inova_n31_wi.fit$fit)
+sapply(inova.degs, nrow)
+sapply(inova_wi.degs, nrow)
+sapply(utah.degs, nrow)
+write.xlsx(inova.degs, "reports/inova_degs.xlsx")
+write.xlsx(inova_wi.degs, "reports/inova_degs_wi.xlsx")
+write.xlsx(utah.degs, "reports/utah_degs.xlsx")
+
+
+```
+
+
+# Check the normalized data (for deconvolution)
+```{r}
+.e <- cbind(inova_n31_wi.fit$v$E, utah_n31.fit$v$E)
+.s <- rbind(inova_n31_wi.fit$v$targets, utah_n31.fit$v$targets)
+boxplot.expr(.e, .s)
+
+library(limma)
+
+v.elist <- new("EList", list(E=.e, genes=exp.genes, targets=.s))
+
+# upated the targets
+# .t <- v.elist$targets %>% select(group:ID,HG) %>% left_join(sam_update, by=c("ID"="id"))
+# v.elist$targets <- .t
+dim(v.elist)
+
+ProjectTemplate::cache("v.elist") # transfer to mac to calc
+
+# inova_update.dge <- v.elist[, v.elist$targets$source=="Inova"]
+# utah_update.dge <- v.elist[, v.elist$targets$source=="Utah"]
+# ProjectTemplate::cache("inova_update.dage")
+# ProjectTemplate::cache("utah_update.dage")
+```
+
+## Venn plot
+
+```{r, fig.width=6, fig.height=6}
+library(VennDiagram)
+
+venn.plot <- venn.diagram(
+   x = list(
+       Inova_ICM = inova.degs$ICM$gene.name,
+       Inova_NICM = inova.degs$NICM$gene.name,
+       Utah_ICM = utah.degs$ICM$gene.name,
+       Utah_NICM = utah.degs$NICM$gene.name
+       ),
+filename = NULL,
+col = "black",
+lty = "dotted",
+#imagetype = "png",
+lwd = 2,
+fill = c("cornflowerblue", "green", "yellow", "darkorchid1"),
+alpha = 0.50,
+label.col = c("orange", "white", "darkorchid4", "white", "white", "white",
+ "white", "white", "darkblue", "white",
+  "white", "white", "white", "darkgreen", "white"),
+cex = 2,
+fontfamily = "serif",
+fontface = "bold",
+cat.col = c("darkblue", "darkgreen", "orange", "darkorchid4"),
+cat.cex = 1,
+cat.fontfamily = "serif"
+)
+
+# have a look at the default plot
+op <- par(mar=c(6,6,6,6))
+grid.newpage()
+grid.draw(venn.plot )
+par(op)
+
+dev.copy2pdf(file="graphs/venn4.pdf", width=6, height=5)
+```
+## venn2
+```{r}
+
+venn2.plot <- venn.diagram(
+   x = list(
+       Inova= inova.degs$HF$gene.name,
+       Utah = utah.degs$HF$gene.name
+       ),
+filename = NULL,
+col = "white",
+lty = 2,
+#imagetype = "png",
+lwd = 2,
+fill = c("cornflowerblue", "green"),
+alpha = 0.50,
+label.col = c("blue", "white", "darkorchid4"),
+cex = 1,
+fontfamily = "serif",
+fontface = "bold",
+cat.col = c("darkblue", "darkgreen"),
+cat.cex = 1,
+cat.fontfamily = "serif"
+)
+
+# have a look at the default plot
+op <- par(mar=c(15,15,15,15))
+grid.newpage()
+grid.draw(venn2.plot )
+par(op)
+
+dev.copy2pdf(file="graphs/venn2_HF.pdf", width=4, height=3)
+```
+
+# Comm
+```{r}
+x = list(
+       Inova_ICM = inova.degs$ICM$gene.name,
+       Inova_NICM = inova.degs$NICM$gene.name,
+       Utah_ICM = utah.degs$ICM$gene.name,
+       Utah_NICM = utah.degs$NICM$gene.name
+       )
+
+
+ItemsList <- gplots::venn(x, show.plot=FALSE)
+isect <- attr(ItemsList, "intersections")
+ss <- grepl(":.+:", names(isect))
+
+
+.nn <- intersect(inova.degs$HF$gene.name, utah.degs$HF$gene.name)
+
+# HF.comm2 <- Reduce(intersect, list(
+#         Inova_ICM = inova.degs$ICM$gene.name,
+#        Utah_ICM = utah.degs$ICM$gene.name,
+#        Inova_NICM = inova.degs$NICM$gene.name,
+#        Utah_NICM = utah.degs$NICM$gene.name
+#        ))
+# HF.comm3 <- isect[ss] %>% unlist
+HF.comm3 <- .nn
+ProjectTemplate::cache("HF.comm3") #105
+```
+
+# compare with the paper
+```{r}
+
+# genes ICM
+s11 <- read.xlsx(xlsxFile = "data/Table S6 S11 S12_Yang et al Circulation.xlsx",
+sheet=2, startRow = 2) %>% janitor::clean_names()
+# genes NICM
+s12 <- read.xlsx(xlsxFile = "data/Table S6 S11 S12_Yang et al Circulation.xlsx",
+sheet=3, startRow = 2) %>% janitor::clean_names()
+
+# lnc
+s14 <- read.xlsx(xlsxFile = "data/Table S5 S14 S15_Yang et al Circulation.xlsx",
+sheet=2, startRow = 2) %>% janitor::clean_names()
+s15 <- read.xlsx(xlsxFile = "data/Table S5 S14 S15_Yang et al Circulation.xlsx",
+sheet=3, startRow = 2) %>% janitor::clean_names()
+
+# s11.flt
+s11.flt <- s11 %>% filter( p_value_nf_vs_icm < 0.05 & abs(log2(fold_change_vs_nf_2)) > 1) %>% filter(gene_symbol %in% exp.genes$gene.name)
+
+s12.flt <- s12 %>% filter( p_value_nf_vs_nicm < 0.05 & abs(log2(fold_change_vs_nf_2)) > 1) %>% dplyr::rename(gene_symbol=transcript) %>% filter( gene_symbol %in% exp.genes$gene.name)
+
+paper2014.flt <- list(s11=s11.flt, s12=s12.flt)
+sapply(paper2014.flt, nrow)
+ProjectTemplate::cache("paper2014.flt")
+
+s11_s12 <- compare(s11.flt$gene_symbol, s12.flt$gene_symbol)
+all.genes <- exp.genes$gene.name
+
+s11_comm3 <- compare(s11.flt$gene_symbol, HF.comm3)
+s12_comm3 <- compare(s12.flt$gene_symbol, HF.comm3)
+
+cc <- compare(s11_comm3$comm, s12_comm3$comm)
+
+fisher.test( all.genes %in% HF.comm3,  all.genes %in% s11.flt$gene_symbol)
+fisher.test( all.genes %in% HF.comm3,  all.genes %in% s12.flt$gene_symbol)
+```
+
+## coding vs noncoding
+```{r}
+table(exp.genes[HF.comm3, "gene_type"] == "protein_coding")
+table(exp.genes[HF.comm3, "gene_type"])
+.d1 <- inova.degs$HF %>% filter(gene.name %in% HF.comm3) %>% dplyr::select(gene.name, logFC, gene_type) %>% dplyr::rename(Inova=logFC) %>% mutate("GeneType" = case_when(
+  gene_type == "protein_coding" ~ "protein coding",
+  gene_type %in% c("lincRNA", "antisense") ~ "lncRNA",
+  TRUE ~ "others"
+)) %>% mutate(GeneType = factor(GeneType, levels=c("protein coding", "lncRNA", "others")))
+.d2 <- utah.degs$HF %>% filter(gene.name %in% HF.comm3) %>% dplyr::select(gene.name, logFC) %>% dplyr::rename(Utah=logFC)
+.d <- .d1 %>% inner_join(.d2)
+library(ggpubr)
+ggscatter(.d, x="Inova", y="Utah", col="GeneType", palette = "jco", alpha=0.7) +
+stat_cor() + geom_abline(lty=2) + labs(x="log2(FC) @ Inova", y="log(FC) @ Utah")
+ggsave("graphs/hf_comm3.scatter.pdf", width=5, height=4)
+```
+
+## NICM vs ICM
+```{r}
+.def_degs <- function(.fit, coefs=c("HF", "ICM", "NICM", "ICM_NICM"), p.value = 0.05, lfc=1){
+  degs <- llply(coefs, function(x){
+    topTable(.fit, coef=x, sort.by="P", lfc=0, p.value = 1, number=Inf, adjust.method = "fdr") %>% mutate(DEG = adj.P.Val < p.value & abs(logFC)>lfc ) %>% filter(DEG) %>% arrange(-logFC) 
+  })
+  names(degs) <- coefs
+  return(degs)
+}
+
+inova_deg.all <- .def_degs(inova_n31.fit$fit, p.value=1, lfc=0)
+sapply(inova_deg.all, nrow)
+
+utah_deg.all <-  .def_degs(utah_n31.fit$fit, p.value=1, lfc=0)
+sapply(utah_deg.all, nrow)
+
+write.xlsx(inova_deg.all, "reports/inova_degs.all.xlsx")
+write.xlsx(utah_deg.all, "reports/utah_degs.all.xlsx")
+
+```
+
+# rnk by HF
+```{r}
+# and save the rank file for GSEA
+hf_inova.rnk <- inova_deg.all$HF %>% dplyr::select(gene.name, logFC)
+hf_utah.rnk <- utah_deg.all$HF %>%  dplyr::select(gene.name, logFC)
+
+write.table(hf_inova.rnk, file="reports/hf_inova.rnk", col.names=F, row.names=F, sep="\t", quote=F)
+write.table(hf_utah.rnk, file="reports/hf_utah.rnk", col.names=F, row.names=F, sep="\t", quote=F)
+```
+
+# Functions
+## save the file for ipa 
+```{r}
+.dd <- inova.degs$HF %>% filter(gene.name %in% HF.comm3) 
+write.table(.dd, file="reports/HF_comm3.IPA.txt", col.names=T, row.names=F, sep="\t", quote=F)
+
+```
+
+# go to Heatmap notebook 
+
+## GO Annotation
+```{r}
+load("cache/cluster6.lst.RData")
+source('/itmi/home/zhuwe/prj/heart_failure/107_RNAseq_4thRun/lib/go_annotate.R')
+load("cache/gsc.RData")
+
+ref.genes <- row.names(fc.final$E)
+cluster6.go <- gsc_gsea(gsc, cluster6.lst, ref.genes, mc.cores = 1)
+ProjectTemplate::cache("cluster6.go")
+
+write.xlsx(cluster6.go$GSEAGO, "reports/cluster6.go.xlsx")
+
+lapply(cluster6.go$GSEAGO, head)
+```
+# Signatures
+## remove the outlier
+```{r}
+names(cluster6.lst) <- paste0("Cls", 1:6)
+.dd <- Biobase::reverseSplit(cluster6.lst) %>% unlist
+gg <- names(.dd)
+
+ss <- v.elist$targets$sid != "10537"
+
+.mat <- t(v.elist$E[gg, ss])
+.me <- WGCNA::moduleEigengenes(.mat, colors = .dd, excludeGrey = FALSE)$eigengene
+
+
+load("cache/mito.genes.RData")
+.mito <- WGCNA::moduleEigengenes( t(v.elist$E[mito.genes, ss]) , colors = rep("mito", length(mito.genes)), excludeGrey = FALSE)$eigengenes
+
+# add the cell fractions
+## transfer data from mac to cache
+## scp cell.frac.tab.xlsx ml.real.RData hf180.kl.RData uv2:~/prj/heart_failure/107_RNAseq_4thRun/cache
+load("cache/hf180.kl.RData")
+cc <- coef(hf180.kl)
+frac.dat <- apply(cc, 2, function(x) x[1:4]/sum(x[1:4])) %>% t %>% as.data.frame
+ProjectTemplate::cache("frac.dat")
+
+all( colnames(v.elist$E) == row.names(frac.dat))
+
+# sam180.dat <- fc.final$targets %>% left_join(frac.dat)
+
+.d <- frac.dat[colnames(v.elist$E)[ss], ]
+MEs.new <- cbind(.me, .mito, .d)
+
+
+ProjectTemplate::cache("MEs.new")
+
+```
+```{r, height=12, width=12,  message=F}
+# drop one outlier
+load("cache/MEs.new.RData")
+load("cache/v.elist.RData")
+ss <- v.elist$targets$pid != "10537"
+
+s <- MEs.new %>% bind_cols( v.elist$targets[ss,]) 
+
+library(GGally)
+ggpairs(s, columns=1:11, aes(col=chf_etiology), alpha=0.7)
+
+ggsave("graphs/sig11.pairs.pdf", width=12, height=12)
+
+# check the legends
+ggally_points(s, ggplot2::aes(myo, fibro, color = chf_etiology))
+
+# Make a function that will only print the legend
+# points_legend <- gglegend(ggally_points)
+# points_legend(iris, ggplot2::aes(Sepal.Length, Sepal.Width, color = Species))
+
+
+```
+# check the fraction 
+```{r}
+p1 <- ggboxplot(s, x="chf_etiology", y="myo", add="dotplot", color="chf_etiology", outlier.shape = NA, label = "sid", label.select = list(criteria = ' myo < 0.65'), repel=T, size=0.5, alpha=0.7 ) + geom_hline(yintercept = 0.65, lty=2, col="gray")
+
+p2 <- ggboxplot(s, x="chf_etiology", y="fibro", add="dotplot", color="chf_etiology", outlier.shape = NA, label = "sid", label.select = list(criteria = ' fibro > 0.2'), repel=T, size=0.5, alpha=0.7) + geom_hline(yintercept = 0.2, lty=2, col="gray")
+
+p3 <-ggboxplot(s, x="chf_etiology", y="leuko", add="dotplot", color="chf_etiology", outlier.shape = NA, label = "sid", label.select = list(criteria = ' leuko > 0.02'), repel=T, size=0.5, alpha=0.7)+ geom_hline(yintercept = 0.02, lty=2, col="gray")
+
+p4 <-ggboxplot(s, x="chf_etiology", y="endo", add="dotplot", color="chf_etiology", outlier.shape = NA, label = "sid", label.select = list(criteria = ' endo > 0.15'), repel=T, size=0.5, alpha=0.7)+ geom_hline(yintercept = 0.15, lty=2, col="gray")
+
+ggarrange(p1, p2, p3, p4,  labels = c("A", "B", "C", "D"),ncol = 2, nrow = 2, common.legend = TRUE, legend = "top")
+ggsave("graphs/fraction.boxplot.pdf", width=7, height=7)
+```
+
+# Calculate the correlation
+```{r}
+.sam <- sam_update[ss, ]
+all(.sam$ID == row.names(MEs.new))
+
+# compare to the last model: drop some covariats:
+# keep age and gender
+# from chf_etiology to gender.impute, drop study, use race, study and age as coviates; drop year_of_lvad
+# .var <- names(.sam)[setdiff(9:56, c(10, 53:55))]
+.var <- names(.sam)[setdiff(10:52, c(13, 26:28))]
+
+.f2 <- function(x, pred.df, out.df){
+  .model <-  glue::glue("out.df${x$out} ~ pred.df${x$pred} + pred.df$age +  pred.df$study + pred.df$gender_impute")
+  rv <- lm(as.formula(.model))
+  out <- broom::tidy(rv)
+  out$pred = x$pred
+  out$out = x$out
+  return(out)
+}
+
+source("lib/super_reg.R")
+
+res.final <- super_reg(.sam, MEs.new[, c("MECls1", "MECls5", "MECls6", "MEmito", "myo", "leuko", "endo")], .f2, variables = .var)
+
+# need to filter res and upate the pvalue
+res_final.fil <- res.final %>% filter(  ! term %in% c("pred.df$studyUtah", "pred.df$age") )  %>% filter(! grepl("\\$gender", term))   %>% filter(! grepl("nicm_subtypeSarcoidosis", term) )%>% filter(adj.pval < 0.1)
+
+dim(res_final.fil)
+ProjectTemplate::cache("res_final.fil")
+write.xlsx(file="reports/res_final.fil.xlsx", res_final.fil)
+```
+
+## check those top hits
+```{r}
+.dat <- .sam %>% bind_cols(MEs.new) 
+
+ggplot(.dat, aes(x=previous_thoracotomy, y=MECls6)) + geom_boxplot() + geom_jitter()
+ggplot(.dat, aes(x=mr, y=MECls6)) + geom_boxplot() + geom_jitter()
+ggplot(.dat, aes(x=chf_etiology, y=MECls6)) + geom_boxplot() + geom_jitter()
+ggplot(.dat, aes(x=chf_etiology, y=MECls1)) + geom_boxplot() + geom_jitter()
+ggplot(.dat, aes(x=chf_etiology, y=MECls5)) + geom_boxplot() + geom_jitter()
+ggplot(.dat, aes(x=chf_etiology, y=MEmito)) + geom_boxplot() + geom_jitter()
+
+# bad
+ggplot(.dat, aes(x=tr, y=endo)) + geom_boxplot() + geom_jitter()
+
+ggplot(.dat, aes(x=mr, y=MECls5)) + geom_boxplot() + geom_jitter()
+ggplot(.dat, aes(x=mr, y=endo)) + geom_boxplot() + geom_jitter()
+ggplot(.dat, aes(x=vad_type, y=MEmito)) + geom_boxplot() + geom_jitter()
+
+
+
+```
+

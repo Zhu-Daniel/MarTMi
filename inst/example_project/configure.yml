@@ -1,0 +1,8 @@
+in_node: (<-|=) *(.+::)?(read(\.*|_).{3,}?|scan *)\(
+out_node: (graphs/.+\..{3,}|*(.+::)?(write(\.*|_).{3,}?)\(|^ *(ProjectTemplate::)?cache
+    *\()
+img_node: '["''](graphs/.+\..{3,})["'']'
+main_title: Mind Map
+mm_name: Mindmap.mm
+rmd_name: src/mm_output.Rmd
+
