@@ -8,7 +8,7 @@
 #'
 #' @return A Mindmap file
 #'
-#' @examples Print_MM_Map(fn = system.file('example_project','src', 'NetworkPlotOne.Rmd',package = "MarkdownNMindmap"), output.fn = 'Mindmap.mm', title = 'Mind map')
+#' @examples Print_MM_Map(fn = system.file('example_project','src', 'NetworkPlotOne.Rmd',package = "MarTMi"), output.fn = 'Mindmap.mm', title = 'Mind map')
 #' @export Print_MM_Map
 Print_MM_Map <- function(fn, output.fn = get_martmi_cfg('mm_name'), title = get_martmi_cfg('main_title')){
   require(stringr)

@@ -12,6 +12,7 @@ The inspiration for MarTMi comes from [mindr](https://github.com/pzhaonet/mindr)
 #install.packages('devtools')
 devtools::install_github('MarTMi')
 ```
+
 ##Usage
 
  - Print_MM_Map(fn, output.fn = get_martmi_cfg('mm_name'), title = get_martmi_cfg('main_title')) takes the desired Markdown file and creates a Mindmap version of it, with the nodes represented by the number of pound signs in the header.
