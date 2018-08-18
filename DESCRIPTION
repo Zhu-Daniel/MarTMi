@@ -11,8 +11,9 @@ Description: Provides two functions. One will convert a Markdown file to a Mindm
 License: What license is it under?
 Encoding: UTF-8
 LazyData: FALSE
-Imports: 
+Imports:
     yaml,stringr,htmltools,XML
 Suggests:
-    ProjectTemplate
+    ProjectTemplate,
+    testthat
 RoxygenNote: 6.0.1
