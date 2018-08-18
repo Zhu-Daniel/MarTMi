@@ -1,0 +1,33 @@
+##Quick guide to the usage of MarTMi
+
+Make sure that you have the proper path to the Markdown file that you wish to convert and that you have changed the options in configure.yml to match what you need.
+
+##Converting Markdown file(s) to a Mindmap file
+Run:
+```{r}
+
+MarTMi::Print_MM_Map()
+
+```
+You will get a Mindmap file named 'Mindmap.mm'. You can open it using FreeMind or any other Mindmap program out there that can read '.mm' files.
+
+The program determines the location for each node by looking for the headers before each codeblock and uses the number of pound sign(s) in each header to determine the location of the node. The more pound signs, the farther the node is from the title of the mindmap. The code that is associated with that header is then displayed as a note in the node. 
+
+The program also checks to see whether there are any subheaders, and creates subnodes with the respective codeblocks as notes.
+
+The program will not work as well if there are no subtitles before the codeblocks. 
+
+##Converting Mindmap file to Markdown file
+Run:
+```{r}
+
+MarTMi::PrintRMDFile()
+
+```
+You will get a Markdown file with the name 'mm_output.Rmd'.
+
+The headers for the Markdown file are determined by the node location. The farther the nodes are from the title, the more pound signs are included in front of the header. This reverses what 'Print_MM_Map' does.
+Keep in mind that the Mindmap file should follow a similar format to the output of 'Print_MM_Map' or else 'PrintRMDFile' will not work.
+
+Example:
+<img src="MarTMi_example_output.png" align="left" width="100" height="100" />
