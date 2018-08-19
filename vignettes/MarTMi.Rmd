@@ -1,8 +1,8 @@
-##Quick guide to the usage of MarTMi
+## Quick guide to the usage of MarTMi
 
 Make sure that you have the proper path to the Markdown file that you wish to convert and that you have changed the options in configure.yml to match what you need.
 
-##Converting Markdown file(s) to a Mindmap file
+## Converting Markdown file(s) to a Mindmap file
 Run:
 ```{r}
 
@@ -17,7 +17,7 @@ The program also checks to see whether there are any subheaders, and creates sub
 
 The program will not work as well if there are no subtitles before the codeblocks. 
 
-##Converting Mindmap file to Markdown file
+## Converting Mindmap file to Markdown file
 Run:
 ```{r}
 
