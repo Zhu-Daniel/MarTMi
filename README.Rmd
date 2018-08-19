@@ -10,7 +10,7 @@ The inspiration for MarTMi comes from [mindr](https://github.com/pzhaonet/mindr)
 ```{r}
 #Install the package from GitHub.
 #install.packages('devtools')
-devtools::install_github('MarTMi')
+devtools::install_github('Zhu-Daniel/MarTMi')
 ```
 
 ## Usage
