@@ -30,4 +30,4 @@ The headers for the Markdown file are determined by the node location. The farth
 Keep in mind that the Mindmap file should follow a similar format to the output of 'Print_MM_Map' or else 'PrintRMDFile' will not work.
 
 Example:
-<img src="MarTMi_example_output.png" align="left" width="100" height="100" />
+# NetworkPlotOne <img src="MarTMi_example_output.png" align="left" width="100" height="100" />
