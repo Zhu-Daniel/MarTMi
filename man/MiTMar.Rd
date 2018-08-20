@@ -45,7 +45,7 @@ PrintRMDFile(mm_fn, out_rmd_fn=get_martmi_cfg('rmd_name'))
 %% ~~objects to See Also as \code{\link{help}}, ~~~
 }
 \examples{
-mm_example <- system.file('example_project', 'Mindmap.mm', package = 'MarkdownNMindmap')
+mm_example <- system.file('example_project', 'Mindmap.mm', package = 'MarTMi')
 
 PrintRMDFile(mm_fn = mm_example, out_rmd_fn = 'mm_output.Rmd')
 

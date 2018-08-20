@@ -21,7 +21,7 @@ This function will convert one or more Markdown file(s) to a Mindmap file, and a
 \examples{
 
 rmd_example_fn <- system.file('example_project','src',
- 'NetworkPlotOne.Rmd', package = "MarkdownNMindmap")
+ 'NetworkPlotOne.Rmd', package = "MarTMi")
 
 Print_MM_Map(fn = rmd_example_fn, output.fn = 'Mindmap.mm',
  title = 'Mind map')
