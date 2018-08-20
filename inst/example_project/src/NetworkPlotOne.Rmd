@@ -1,6 +1,8 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output:
+  pdf_document: default
+  html_notebook: default
 ---
 
 # Init
@@ -23,7 +25,7 @@ theme_update(axis.title.y = element_text(size=fontsize))
 theme_update(plot.title = element_text(size=fontsize+2))
 ```
 
-#First Generation of Random Network
+# First Generation of Random Network
 ## Using matrix
 Learn to plot network using igraph
 ```{r}
