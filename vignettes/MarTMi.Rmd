@@ -36,5 +36,5 @@ Example: (This is the result of example(Print_MM_Map))
 
 
 
- <img src="../images/MarTMi_example_output.png" width='750' height='700'/>
+ <img src="../images/MarTMi_example_output.png" />
 
