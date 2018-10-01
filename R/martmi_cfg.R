@@ -7,7 +7,7 @@
 #' @return The desired regex command for the particular function.
 get_martmi_cfg <- function(cur_config){
   require(yaml)
-  grep_edit <- yaml.load_file(system.file('example_project', 'configure.yml', package = 'MarkdownNMindmap'))
+  grep_edit <- yaml.load_file(system.file('example_project', 'configure.yml', package = 'MarTMi'))
   if (is.null(grep_edit[[cur_config]])){
     stop(sprintf('The configure for %s does not exist!', cur_config))
   }
