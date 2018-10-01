@@ -16,13 +16,13 @@ get_martmi_cfg <- function(cur_config){
   Confignow <- getOption('MarTMi_CFG')
   if (is.null(Confignow)){
     set_martmi_cfg()
-    grep_edit <- yaml.load_file(system.file('example_project', 'configure.yml', package = 'MarkdownNMindmap'))
+    grep_edit <- yaml.load_file(system.file('example_project', 'configure.yml', package = 'MarTMi'))
     options(MarTMi_CFG = grep_edit[[cur_config]])
     rv <- getOption('MarTMi_CFG')
     return(rv)
   }
   else {
-    grep_edit <- yaml.load_file(system.file('example_project', 'configure.yml', package = 'MarkdownNMindmap'))
+    grep_edit <- yaml.load_file(system.file('example_project', 'configure.yml', package = 'MarTMi'))
     options(MarTMi_CFG = grep_edit[[cur_config]])
     rv <- getOption('MarTMi_CFG')
     return(rv)
