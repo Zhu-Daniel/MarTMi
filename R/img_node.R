@@ -32,7 +32,7 @@ img_node <- function(codeline, img_pattern=get_martmi_cfg("img_node")){
   <head>
   </head>
   <body>
-  <p><img src="'
+  <p><img width="25%" height="25%" src="'
   post_img_code <- '"/>
   </p>
   </body>
@@ -62,7 +62,7 @@ img_node <- function(codeline, img_pattern=get_martmi_cfg("img_node")){
       new_abs_fn <- file.path(.img_folder, .img_png)
       ### Value is a command that formats the abs_fn and new_abs_fn into a png
       ## Why do you use both abs_fn and what does -s, -Z, and --out mean?
-      sips_cmd <- sprintf("sips -s format png -Z 200  %s --out %s", abs_fn, new_abs_fn)
+      sips_cmd <- sprintf("sips -s format png -Z 800  %s --out %s", abs_fn, new_abs_fn)
       ### assuming that this opens iTerm to execute the command in order to implement the new png file into the computer, and to put the result as a R character vector
       cmd_rv <- system(sips_cmd, intern = T)
 
