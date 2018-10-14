@@ -38,3 +38,8 @@ Example: (This is the result of example(Print_MM_Map))
 
  <img src="../images/MarTMi_example_output.png" />
 
+
+
+Example 2: This graph is generated with the program on [this R-Bloggers article](http://blog.schochastics.net/post/analyzing-the-greatest-strikers-in-football-ii-visualizing-data/) by David Schoch.
+
+<img src="../images/MarTMi_example_outputII.png" />

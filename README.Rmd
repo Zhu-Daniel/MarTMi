@@ -18,6 +18,8 @@ devtools::install_github('Zhu-Daniel/MarTMi')
  - Print_MM_Map(fn, output.fn = get_martmi_cfg('mm_name'), title = get_martmi_cfg('main_title')) takes the desired Markdown file and creates a Mindmap version of it, with the nodes represented by the number of pound signs in the header.
  - PrintRMDFile(mm_fn, out_rmd_fn = get_martmi_cfg('rmd_name')) takes the desired Mindmap file and creates a R Markdown version of it, with the number of pound signs in the header represented by the node location.
 
+For examples please see MarTMi.Rmd under vignettes.
+
 ## Examples
 ```{r}
 library(MarTMi)
