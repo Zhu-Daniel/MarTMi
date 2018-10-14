@@ -18,8 +18,6 @@ devtools::install_github('Zhu-Daniel/MarTMi')
  - Print_MM_Map(fn, output.fn = get_martmi_cfg('mm_name'), title = get_martmi_cfg('main_title')) takes the desired Markdown file and creates a Mindmap version of it, with the nodes represented by the number of pound signs in the header.
  - PrintRMDFile(mm_fn, out_rmd_fn = get_martmi_cfg('rmd_name')) takes the desired Mindmap file and creates a R Markdown version of it, with the number of pound signs in the header represented by the node location.
 
-For examples please see MarTMi.Rmd under vignettes.
-
 ## Examples
 ```{r}
 library(MarTMi)
@@ -28,3 +26,15 @@ example("Print_MM_Map")
 example("PrintRMDFile")
 #Uses the file 'Mindmap.mm' to generate a R Markdown file with the file name 'mm_output.Rmd'.
 ```
+
+Example: This is the result of example(Print_MM_Map)
+
+
+
+ <img src="../images/MarTMi_example_output.png" />
+
+
+
+Example 2: This graph is generated with the program on [this R-Bloggers article](http://blog.schochastics.net/post/analyzing-the-greatest-strikers-in-football-ii-visualizing-data/) by David Schoch.
+
+<img src="../images/MarTMi_example_outputII.png" />
