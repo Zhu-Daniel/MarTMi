@@ -8,7 +8,7 @@ The inspiration for MarTMi comes from [mindr](https://github.com/pzhaonet/mindr)
 
 ## Installation
 ```{r}
-#Install the package from GitHub.
+# Install the package from GitHub.
 install.packages('devtools')
 devtools::install_github('Zhu-Daniel/MarTMi')
 ```
@@ -22,9 +22,9 @@ devtools::install_github('Zhu-Daniel/MarTMi')
 ```{r}
 library(MarTMi)
 example("Print_MM_Map")
-#Generates a Mindmap file with the file name 'Mindmap.mm' and the title Mindmap of some network plots. Uses the src file 'NetworkPlotOne.Rmd'
+# Generates a Mindmap file with the file name 'Mindmap.mm' and the title Mindmap of some network plots. Uses the src file 'NetworkPlotOne.Rmd'
 example("PrintRMDFile")
-#Uses the file 'Mindmap.mm' to generate a R Markdown file with the file name 'mm_output.Rmd'.
+# Uses the file 'Mindmap.mm' to generate a R Markdown file with the file name 'mm_output.Rmd'.
 ```
 
 Example: This is the result of example(Print_MM_Map)
