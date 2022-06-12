@@ -1,2 +1,3 @@
 *.png linguist-detectable=false
 *.mm linguist-detectable=false
+*.js linguist-detectable=false
